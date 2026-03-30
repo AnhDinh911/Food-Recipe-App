@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "dart-code.dart-code",
+    "dart-code.flutter"
+  ],
+  "unwantedRecommendations": [
+    "swiftlang.swift-vscode",
+    "sswg.swift-lang",
+    "ms-dotnettools.csharp",
+    "ms-vscode.cpptools",
+    "llvm-vs-code-extensions.vscode-clangd"
+  ]
+}
