@@ -14,7 +14,7 @@ class SplashScreen extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           AssetImageWithFallback(
-            assetPath: AppAssets.splashFood,
+            assetPath: 'assets/images/splash.jpg',
             fallback: const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -35,22 +35,6 @@ class SplashScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Text(
-                      'Recipes App',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        letterSpacing: 0.6,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                   const Spacer(),
                   const Text(
                     'What would you like to cook today?',
@@ -98,3 +82,4 @@ class SplashScreen extends StatelessWidget {
     );
   }
 }
+

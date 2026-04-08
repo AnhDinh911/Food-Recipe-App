@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:food_recipe_app/core/app_theme.dart';
 
@@ -15,7 +16,10 @@ class AssetImageWithFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return Image.asset(
       assetPath,
+      width: double.infinity,
+      height: double.infinity,
       fit: BoxFit.cover,
+      alignment: Alignment.center,
       errorBuilder: (_, __, ___) => fallback,
     );
   }
@@ -141,6 +145,67 @@ class GoogleButton extends StatelessWidget {
         icon: const Text('G', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
         label: const Text('Sign up with Google'),
       ),
+    );
+  }
+}
+
+class RecipeNetworkImage extends StatelessWidget {
+  const RecipeNetworkImage({
+    super.key,
+    required this.imageUrl,
+    required this.height,
+    this.borderRadius,
+  });
+
+  final String imageUrl;
+  final double height;
+  final BorderRadius? borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = Container(
+      height: height,
+      width: double.infinity,
+      color: Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.2,
+          color: AppColors.primaryGreen.withValues(alpha: 0.75),
+        ),
+      ),
+    );
+
+    final error = Container(
+      height: height,
+      width: double.infinity,
+      color: Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.broken_image_outlined,
+        size: 32,
+        color: Colors.grey,
+      ),
+    );
+
+    final image = CachedNetworkImage(
+      imageUrl: imageUrl,
+      height: height,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      fadeInDuration: const Duration(milliseconds: 180),
+      placeholder: (_, __) => placeholder,
+      errorWidget: (_, __, ___) => error,
+      memCacheHeight: height >= 300 ? 720 : 320,
+    );
+
+    if (borderRadius == null) return image;
+
+    return ClipRRect(
+      borderRadius: borderRadius!,
+      child: image,
     );
   }
 }
