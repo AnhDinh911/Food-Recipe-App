@@ -12,6 +12,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -19,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -26,11 +28,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
+    final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       _showMessage('Please fill all fields.');
       return;
     }
@@ -48,6 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await AuthService.instance.registerWithEmail(
         email: email,
         password: password,
+        displayName: name,
       );
       _showMessage('Registration successful.');
       if (mounted) {
@@ -145,6 +149,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 30),
+              RoundedInput(
+                hint: 'Full Name',
+                icon: Icons.person_outline_rounded,
+                controller: _nameController,
+                keyboardType: TextInputType.name,
+              ),
+              const SizedBox(height: 14),
               RoundedInput(
                 hint: 'Email',
                 icon: Icons.alternate_email_rounded,

@@ -209,3 +209,57 @@ class RecipeNetworkImage extends StatelessWidget {
     );
   }
 }
+
+class UserAvatar extends StatelessWidget {
+  const UserAvatar({
+    super.key,
+    required this.name,
+    this.photoUrl,
+    this.radius = 24,
+    this.backgroundColor = AppColors.primaryGreen,
+  });
+
+  final String name;
+  final String? photoUrl;
+  final double radius;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmedPhotoUrl = photoUrl?.trim();
+    if (trimmedPhotoUrl != null && trimmedPhotoUrl.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: backgroundColor.withValues(alpha: 0.12),
+        backgroundImage: CachedNetworkImageProvider(trimmedPhotoUrl),
+      );
+    }
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: backgroundColor,
+      child: Text(
+        _initials(name),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: radius * 0.7,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  String _initials(String value) {
+    final pieces = value
+        .split(' ')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .toList(growable: false);
+
+    if (pieces.isEmpty) return 'C';
+    return pieces
+        .map((part) => part.substring(0, 1).toUpperCase())
+        .join();
+  }
+}

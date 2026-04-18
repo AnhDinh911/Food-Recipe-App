@@ -1,13 +1,19 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart'; // Flutter Material UI widgets
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_recipe_app/core/app_theme.dart'; // App colors and asset paths
 import 'package:food_recipe_app/data/recipe_repository.dart';
+import 'package:food_recipe_app/data/user_repository.dart';
+import 'package:food_recipe_app/models/app_notification.dart';
 import 'package:food_recipe_app/models/recipe.dart';
+import 'package:food_recipe_app/screens/notifications_screen.dart';
 import 'package:food_recipe_app/screens/post_recipe_screen.dart';
 import 'package:food_recipe_app/screens/recipe_detail_screen.dart';
 import 'package:food_recipe_app/screens/saved_recipes_screen.dart';
+import 'package:food_recipe_app/screens/settings_screen.dart';
+import 'package:food_recipe_app/screens/user_profile_screen.dart';
 import 'package:food_recipe_app/widgets/common_widgets.dart';
 import 'package:food_recipe_app/widgets/recipe_card.dart';
 
@@ -28,6 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late final PageController _pageController;
   late final TextEditingController _searchController;
   late final FocusNode _searchFocusNode;
+  StreamSubscription<List<AppNotification>>? _notificationsSubscription;
+  final Set<String> _seenNotificationIds = <String>{};
+  bool _hasPrimedNotifications = false;
   bool _isSearchLoading = true;
   List<Recipe> _searchRecipes = const [];
 
@@ -46,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchFocusNode = FocusNode();
     _loadCuisineSections();
     _loadSearchRecipes();
+    _bindNotificationStream();
   }
 
   @override
@@ -53,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _pageController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _notificationsSubscription?.cancel();
     super.dispose();
   }
 
@@ -81,6 +92,42 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() => _isSearchLoading = false);
     }
+  }
+
+  void _bindNotificationStream() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    _notificationsSubscription?.cancel();
+    _notificationsSubscription =
+        UserRepository.instance.watchNotifications(userId).listen((notifications) {
+      if (!_hasPrimedNotifications) {
+        _seenNotificationIds
+          ..clear()
+          ..addAll(notifications.map((item) => item.id));
+        _hasPrimedNotifications = true;
+        return;
+      }
+
+      final unseen = notifications
+          .where((item) => !_seenNotificationIds.contains(item.id))
+          .toList(growable: false);
+
+      if (unseen.isEmpty || !mounted) return;
+
+      _seenNotificationIds.addAll(unseen.map((item) => item.id));
+      final latest = unseen.first;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          content: Text(
+            '${latest.actorName} commented on ${latest.recipeTitle ?? 'your recipe'}',
+          ),
+        ),
+      );
+    }, onError: (_) {
+      // Ignore notification stream permission issues so home stays usable.
+    });
   }
 
   void _toggleActionMenu() {
@@ -120,12 +167,37 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const PostRecipeScreen()),
     );
+    setState(_loadCuisineSections);
+    _loadSearchRecipes();
   }
 
   Future<void> _openSavedRecipes() async {
     _closeActionMenu();
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SavedRecipesScreen()),
+    );
+  }
+
+  Future<void> _openUserProfile() async {
+    _closeActionMenu();
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+    );
+  }
+
+  Future<void> _openSettings() async {
+    _closeActionMenu();
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _openNotifications() async {
+    _closeActionMenu();
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
     );
   }
 
@@ -207,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
               left: 0,
               right: 0,
               top: 0,
-              bottom: 92,
+              bottom: 90,
               child: GestureDetector(
                 onTap: _closeActionMenu,
                 child: BackdropFilter(
@@ -226,6 +298,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onCenterTap: _toggleActionMenu,
         onMiddleTap: _openPostRecipe,
         onRightTap: _openSavedRecipes,
+        onProfileTap: _openUserProfile,
+        onNotificationTap: _openNotifications,
+        onSettingsTap: _openSettings,
       ),
     );
   }
@@ -762,6 +837,7 @@ class _RecipeCarousel extends StatelessWidget {
             itemBuilder: (context, index) {
               final recipe = recipes[index];
               return RecipeCard(
+                key: ValueKey('recipe-card-${recipe.id}'),
                 recipe: recipe,
                 onTap: () {
                   Navigator.push(
@@ -789,6 +865,9 @@ class _BottomNavBar extends StatelessWidget {
     required this.onCenterTap,
     required this.onMiddleTap,
     required this.onRightTap,
+    required this.onProfileTap,
+    required this.onNotificationTap,
+    required this.onSettingsTap,
   });
 
   final int selectedTabIndex;
@@ -798,6 +877,9 @@ class _BottomNavBar extends StatelessWidget {
   final VoidCallback onCenterTap;
   final VoidCallback onMiddleTap;
   final VoidCallback onRightTap;
+  final VoidCallback onProfileTap;
+  final VoidCallback onNotificationTap;
+  final VoidCallback onSettingsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -818,8 +900,16 @@ class _BottomNavBar extends StatelessWidget {
             onTap: onSearchTap,
           ),
           const SizedBox(width: 54, height: 54),
-          const Icon(Icons.notifications_none_outlined, color: Colors.grey),
-          const Icon(Icons.person_outline, color: Colors.grey),
+          _FooterIconButton(
+            icon: Icons.notifications_none_outlined,
+            isActive: false,
+            onTap: onNotificationTap,
+          ),
+          _FooterIconButton(
+            icon: Icons.person_outline,
+            isActive: false,
+            onTap: onProfileTap,
+          ),
         ],
       ),
     );
@@ -853,8 +943,9 @@ class _BottomNavBar extends StatelessWidget {
             ),
           _ActionButtonsOverlay(
             isOpen: isActionMenuOpen,
-            onMiddleTap: onMiddleTap,
-            onRightTap: onRightTap,
+            onPostTap: onMiddleTap,
+            onSavedTap: onRightTap,
+            onSettingsTap: onSettingsTap,
           ),
           _CenterActionButton(
             isOpen: isActionMenuOpen,
@@ -903,11 +994,12 @@ class _CenterActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      left: 0,
-      right: 0,
       bottom: 18,
-      child: Center(
-        child: GestureDetector(
+      child: Material(
+        color: AppColors.primaryGreen,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
@@ -932,13 +1024,15 @@ class _CenterActionButton extends StatelessWidget {
 class _ActionButtonsOverlay extends StatelessWidget {
   const _ActionButtonsOverlay({
     required this.isOpen,
-    required this.onMiddleTap,
-    required this.onRightTap,
+    required this.onPostTap,
+    required this.onSavedTap,
+    required this.onSettingsTap,
   });
 
   final bool isOpen;
-  final VoidCallback onMiddleTap;
-  final VoidCallback onRightTap;
+  final VoidCallback onPostTap;
+  final VoidCallback onSavedTap;
+  final VoidCallback onSettingsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -946,74 +1040,56 @@ class _ActionButtonsOverlay extends StatelessWidget {
       required IconData icon,
       required VoidCallback onTap,
     }) {
-      return GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 54,
-          height: 54,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
+      return Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 54,
+            height: 54,
+            child: Icon(icon, color: AppColors.primaryGreen),
           ),
-          child: Icon(icon, color: AppColors.primaryGreen),
         ),
       );
     }
 
     return IgnorePointer(
       ignoring: !isOpen,
-      child: SizedBox(
-        height: 170,
-        child: Stack(
-          alignment: Alignment.bottomCenter,
-          clipBehavior: Clip.none,
-          children: [
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutBack,
-              bottom: isOpen ? 100 : 10,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 180),
-                opacity: isOpen ? 1 : 0,
-                child: Transform.translate(
-                  offset: const Offset(-82, 0),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 180),
+        opacity: isOpen ? 1 : 0,
+        child: AnimatedSlide(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutBack,
+          offset: isOpen ? Offset.zero : const Offset(0, 0.2),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 92),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                actionButton(
+                  icon: Icons.bookmarks_rounded,
+                  onTap: onSavedTap,
+                ),
+                const SizedBox(width: 26),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 28),
                   child: actionButton(
-                    icon: Icons.circle_outlined,
-                    onTap: () {},
+                    icon: Icons.post_add_rounded,
+                    onTap: onPostTap,
                   ),
                 ),
-              ),
-            ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutBack,
-              bottom: isOpen ? 130 : 10,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 180),
-                opacity: isOpen ? 1 : 0,
-                child: actionButton(
-                  icon: Icons.post_add_rounded,
-                  onTap: onMiddleTap,
+                const SizedBox(width: 26),
+                actionButton(
+                  icon: Icons.settings_outlined,
+                  onTap: onSettingsTap,
                 ),
-              ),
+              ],
             ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutBack,
-              bottom: isOpen ? 100 : 10,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 180),
-                opacity: isOpen ? 1 : 0,
-                child: Transform.translate(
-                  offset: const Offset(82, 0),
-                  child: actionButton(
-                    icon: Icons.bookmark_outline_rounded,
-                    onTap: onRightTap,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -13,15 +13,22 @@ class AuthService {
   Future<UserCredential> registerWithEmail({
     required String email,
     required String password,
+    String? displayName,
   }) async {
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
 
+    final trimmedName = displayName?.trim();
+    if (trimmedName != null && trimmedName.isNotEmpty) {
+      await credential.user?.updateDisplayName(trimmedName);
+    }
+
     await _tryUpsertUserProfile(
       uid: credential.user!.uid,
       email: credential.user?.email ?? email,
+      displayName: trimmedName,
       provider: 'password',
     );
 
@@ -31,11 +38,21 @@ class AuthService {
   Future<UserCredential> loginWithEmail({
     required String email,
     required String password,
-  }) {
-    return _auth.signInWithEmailAndPassword(
+  }) async {
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
+
+    await _tryUpsertUserProfile(
+      uid: credential.user!.uid,
+      email: credential.user?.email ?? email,
+      displayName: credential.user?.displayName,
+      photoUrl: credential.user?.photoURL,
+      provider: 'password',
+    );
+
+    return credential;
   }
 
   Future<UserCredential> signInWithGoogle() async {
@@ -103,7 +120,20 @@ class AuthService {
   }
 
   static Future<void> signOut() async {
-    await FirebaseAuth.instance.signOut();
-    await GoogleSignIn().signOut();
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {
+      // Continue with provider cleanup below.
+    }
+
+    try {
+      final googleSignIn = GoogleSignIn();
+      final isSignedIn = await googleSignIn.isSignedIn();
+      if (isSignedIn) {
+        await googleSignIn.signOut();
+      }
+    } catch (_) {
+      // A Google sign-out failure should not block app logout.
+    }
   }
 }

@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if isSelf(userId);
+      allow delete: if false;
+
+      match /savedRecipes/{recipeId} {
+        allow read, create, update, delete: if isSelf(userId);
+      }
+
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isSelf(userId);
+        allow create: if signedIn()
+          && request.resource.data.actorId == request.auth.uid
+          && request.resource.data.type == 'recipe_comment'
+          && request.resource.data.title is string
+          && request.resource.data.body is string
+          && request.resource.data.actorName is string
+          && request.resource.data.recipeId is string
+          && request.resource.data.recipeTitle is string
+          && request.resource.data.isRead == false;
+      }
+    }
+
+    match /recipes/{recipeId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.creatorId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.recipeId == recipeId;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

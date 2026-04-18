@@ -1,1 +1,28 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"food-recipe-app-33140","appId":"1:580184804861:android:3493c06b0beb8c0ed55d94","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"food-recipe-app-33140","configurations":{"android":"1:580184804861:android:3493c06b0beb8c0ed55d94","ios":"1:580184804861:ios:762047b1d0465558d55d94","macos":"1:580184804861:ios:762047b1d0465558d55d94","web":"1:580184804861:web:5bdda76a804d0eced55d94","windows":"1:580184804861:web:f031a61d4340101ad55d94"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "food-recipe-app-33140",
+          "appId": "1:580184804861:android:3493c06b0beb8c0ed55d94",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "food-recipe-app-33140",
+          "configurations": {
+            "android": "1:580184804861:android:3493c06b0beb8c0ed55d94",
+            "ios": "1:580184804861:ios:762047b1d0465558d55d94",
+            "macos": "1:580184804861:ios:762047b1d0465558d55d94",
+            "web": "1:580184804861:web:5bdda76a804d0eced55d94",
+            "windows": "1:580184804861:web:f031a61d4340101ad55d94"
+          }
+        }
+      }
+    }
+  }
+}

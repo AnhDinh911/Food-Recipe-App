@@ -99,6 +99,9 @@ class _PostRecipeScreenState extends State<PostRecipeScreen> {
         origin: origin,
         ingredients: ingredients,
         steps: steps,
+        creatorId: '',
+        creatorName: '',
+        creatorPhotoUrl: null,
       );
 
       await RecipeRepository.instance.createRecipe(recipe, isPopular: _isPopular);

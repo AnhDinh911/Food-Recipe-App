@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   static const Color primaryBackground = Color(0xFFFFFFFF);
@@ -18,9 +19,22 @@ class AppAssets {
 }
 
 ThemeData buildAppTheme() {
+  final baseTheme = ThemeData(
+    scaffoldBackgroundColor: AppColors.primaryBackground,
+    colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen),
+  );
+
   return ThemeData(
     scaffoldBackgroundColor: AppColors.primaryBackground,
-    fontFamily: 'Georgia',
     colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen),
+    textTheme: GoogleFonts.poppinsTextTheme(baseTheme.textTheme),
+    primaryTextTheme: GoogleFonts.poppinsTextTheme(baseTheme.primaryTextTheme),
+    appBarTheme: baseTheme.appBarTheme.copyWith(
+      titleTextStyle: GoogleFonts.poppins(
+        color: AppColors.textDark,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
   );
 }
